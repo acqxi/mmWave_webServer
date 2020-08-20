@@ -3,19 +3,19 @@ from threading import Thread
 import random
 from flask import Flask, request
 from dash import Dash
-from werkzeug.wsgi import DispatcherMiddleware
+import dash_html_components as html
 
 flaskServer = Flask( __name__ )
-dashChartApp = Dash( __name__ )
-application = DispatcherMiddleware( flaskServer, { '/dash': dashChartApp.server } )
+dashChartApp = Dash( __name__, server=flaskServer, url_base_pathname='/dashChart' )
+dashChartApp.layout = html.Div( children=[ html.H1( children='Dash App' ) ] )
 
 
-@app.route( '/', methods=[ 'GET' ] )
+@flaskServer.route( '/', methods=[ 'GET' ] )
 def hello_world():
     return 'Hello World!'
 
 
-@app.route( '/customerupdate', methods=[ 'GET', 'POST' ] )
+@flaskServer.route( '/customerupdate', methods=[ 'GET', 'POST' ] )
 def customerupdate():
     posted_file = str( request.files[ 'document' ].read(), 'utf-8' )
     posted_data = json.load( request.files[ 'datas' ] )
@@ -25,7 +25,7 @@ def customerupdate():
 
 
 def run():
-    application.run( host='0.0.0.0', port=random.randint( 2000, 9000 ) )
+    flaskServer.run( host='0.0.0.0', port=random.randint( 2000, 9000 ) )
 
 
 def keep_alive():
