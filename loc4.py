@@ -240,6 +240,21 @@ tag_maker = dash.Dash(
     suppress_callback_exceptions=True )
 
 tag_maker.layout = make_layout_RTchart()
+'''
+@tag_maker.callback(
+    [
+        Output( "data-count", "value" ),
+        Output( "file-name", "value" ),
+    ],
+    Input( "tag-give-back", "children" ),
+)
+def except_data_count( gb: str ):
+    if 'x01' in gb:
+        return 0, gb.split( 'x01' )[ -1 ]
+    elif 'x02' in gb:
+        return 0, gb.split( 'x02' )[ -1 ]
+    elif 'x03' in gb:
+        return int( gb.split( 'x03' )[ -2 ] ), gb.split( 'x03' )[ -1 ]'''
 
 
 @tag_maker.callback( Output( "tag-value", "children" ), [ Input( "tag-target", "value" ) ] )
@@ -304,13 +319,18 @@ def on_button_click( n1, n2, n3, n4, n5, n6, fileName, dataCount, tagTarget ):
         except TypeError as e:
             return str( e ), True, dataCount
             raise e
-        return f"file : {''.join( fileName.split( '.' )[ 0 ], '.csv' )} saved !!", False, 0
+        return f"file : {''.join( fileName.split( '.' )[ 0 ], '.csv' )} saved !!", False, dataCount + 1000
 
     return f"{fileName}[{dataCount}] is {tag}", save_btn, dataCount + 1
 
 
 @tag_maker.callback(
+    #[
     Output( "cluster-graph", "figure" ),
+    #Output( "tag-give-back", "children" ),
+    #Output( "data-count", "value" ),
+    #Output( "file-name", "value" ),
+    #],
     [
         Input( "file-name", "value" ),
         Input( "data-count", "value" ),
@@ -319,9 +339,22 @@ def on_button_click( n1, n2, n3, n4, n5, n6, fileName, dataCount, tagTarget ):
 )
 def make_graph( fileName, dataCount, clustererType ):
     # minimal input validation, make sure there's at least one cluster
+    global FILE_NAMES
+
     file_v6_df = get_data( os.path.join( P_FILE_PATH, fileName ) )
 
-    data_df = file_v6_df.loc[ min( dataCount, file_v6_df.iloc[ -1 ].name[ 0 ] - 1 ) ]
+    try:
+        data_df = file_v6_df.loc[ dataCount ]
+    except KeyError:
+        if dataCount < 0:
+            return go.Figure()  #, 'data count should >= 0'  #, 0, fileName
+        elif dataCount > file_v6_df.iloc[ -1 ].name[ 0 ]:
+            try:
+                return go.Figure()  #, 'no more data in this file'  #, 0, FILE_NAMES[ FILE_NAMES.index( value=fileName ) + 1 ]
+            except IndexError as e:
+                raise e
+        else:
+            return go.Figure()  #, 'this frame have no data'  #, dataCount + 1, fileName
     data_df = data_df.sort_values( by='snr', ascending=False )
 
     #print( data_df )
@@ -359,7 +392,7 @@ def make_graph( fileName, dataCount, clustererType ):
 
     layout = {
         'title':
-        f"it's {fileName}['{min( dataCount, file_v6_df.iloc[ -1 ].name[ 0 ] - 1)}'] \n XXXX",
+        f"it's {fileName}['{min( dataCount, file_v6_df.iloc[ -1 ].name[ 0 ] - 1)}'] \n {g_last_file_data[1].loc[dataCount,'time']}",
         "xaxis": {
             "title": 'x(m)',
             'range': [ -4, 4 ],
@@ -385,7 +418,7 @@ def make_graph( fileName, dataCount, clustererType ):
         ],
     }
 
-    return go.Figure( data=data, layout=layout )
+    return go.Figure( data=data, layout=layout )  #, dataCount, fileName
 
 
 @server.route( '/', methods=[ 'GET' ] )
